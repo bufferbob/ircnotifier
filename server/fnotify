@@ -1,0 +1,32 @@
+# -*- coding: utf-8 -*-
+# vim: set filetype=python:
+
+import weechat, os, stat
+
+LOGFILE = os.path.expanduser('~/.weechat/fnotify.fifo')
+
+weechat.register('fnotify', 'gruik', '0.1', 'GPL', 'envoie tous les messages dans une fifo', '', '')
+weechat.hook_print('', '', '', 1, 'notify_show', '')
+
+def log2file(who, chan, msg, hl, nick):
+   try:
+      state = stat.S_ISFIFO(os.stat(LOGFILE).st_mode)
+   except:
+      os.mkfifo(LOGFILE, 0640)
+      state = True
+   finally:
+      if state:
+         current_chan = weechat.buffer_get_string(weechat.current_buffer(), 'short_name')
+         with open(LOGFILE, 'w+') as fichier:
+            fichier.write('{} {} {} {} {} {}\n'.format(current_chan, nick, str(hl), chan, who, msg))
+      else:
+         pass
+   return weechat.WEECHAT_RC_OK
+
+def notify_show(data, bufferp, uber_empty, tagsn, isdisplayed, ishilight, prefix, message):
+   who_talks       = prefix
+   where           = prefix if weechat.buffer_get_string(bufferp, 'localvar_type') == 'private' else weechat.buffer_get_string(bufferp, 'short_name')
+   is_highlighted  = True if ishilight == 1 else False
+   local_nick      = weechat.buffer_get_string(bufferp, 'localvar_nick')
+   return (log2file(who_talks, where, message, is_highlighted, local_nick))
+
